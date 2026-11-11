@@ -10,4 +10,4 @@ RUN npm install
 # Copy the rest of the application files to the container
 COPY . .
 EXPOSE 8545
-CMD [ "npm", "run", "simulator" ]
+CMD [ "sh", "docker-entrypoint.sh" ]

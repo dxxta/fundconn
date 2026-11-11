@@ -26,12 +26,15 @@ const seed = async ({
   contract,
   deployer,
 }: Awaited<ReturnType<typeof main>>) => {
+  // deadlines are relative to the deploy time; negative offsets are already expired
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const daysFromNow = (days: number) => Date.now() + days * DAY_MS;
   const project_list = [
     {
       title: "Build Responsive Web App",
       description:
         "Create a progressive web application with a mobile-first approach.",
-      deadline: 1737225600000,
+      deadline: daysFromNow(14),
       date: new Date().getTime(),
       image: "https://picsum.photos/1920/1080",
       goals: "0.5",
@@ -42,7 +45,7 @@ const seed = async ({
       title: "Integrate AI Chatbot",
       description:
         "Develop and integrate an AI-powered chatbot into the existing customer support system.",
-      deadline: 1739654400000,
+      deadline: daysFromNow(30),
       date: new Date().getTime(),
       image: "https://picsum.photos/1920/1080?random=1",
       goals: "1.5",
@@ -53,7 +56,7 @@ const seed = async ({
       title: "Server Infrastructure",
       description:
         "Improve server performance and scalability by implementing cloud-native solutions.",
-      deadline: 1742073600000,
+      deadline: daysFromNow(45),
       date: new Date().getTime(),
       image: "https://picsum.photos/1920/1080?random=2",
       goals: "2",
@@ -64,7 +67,7 @@ const seed = async ({
       title: "Launch Marketing Campaign",
       description:
         "Plan and execute a comprehensive marketing campaign for a new product release.",
-      deadline: 1744492800000,
+      deadline: daysFromNow(60),
       date: new Date().getTime(),
       image: "https://picsum.photos/1920/1080?random=3",
       goals: "0.3",
@@ -75,12 +78,57 @@ const seed = async ({
       title: "Develop Mobile App",
       description:
         "Create a minimum viable product for a cross-platform mobile application.",
-      deadline: 1746912000000,
+      deadline: daysFromNow(90),
       date: new Date().getTime(),
       image: "https://picsum.photos/1920/1080?random=4",
       goals: "0.7",
       content:
         "<p>The goal of this project is to develop a minimum viable product (MVP) for a cross-platform mobile application. The MVP will focus on core functionalities, ensuring a quick release to test the market and gather user feedback.</p><img class='project-image-content' src='https://picsum.photos/600/400?random=4' alt='Mobile App MVP' /><p>Technologies such as <strong>Flutter</strong> or <strong>React Native</strong> will be utilized to ensure compatibility across Android and iOS platforms. Features like user authentication, push notifications, and a streamlined user interface will be prioritized.</p><p>Post-launch, the app will be iteratively improved based on user feedback, adding advanced features and addressing any pain points. This agile development approach minimizes risks and accelerates time-to-market while ensuring a user-centric product.</p>",
+    },
+    {
+      title: "Community Hackathon",
+      description: "Host a weekend hackathon for local developers and students.",
+      deadline: daysFromNow(120),
+      date: new Date().getTime(),
+      image: "https://picsum.photos/1920/1080?random=5",
+      goals: "1",
+      content: "<p>Host a weekend hackathon for local developers and students. This project is part of the default seed data.</p>",
+    },
+    {
+      title: "Open Source Library",
+      description: "Maintain and document a widely used open source UI library.",
+      deadline: daysFromNow(180),
+      date: new Date().getTime(),
+      image: "https://picsum.photos/1920/1080?random=6",
+      goals: "0.8",
+      content: "<p>Maintain and document a widely used open source UI library. This project is part of the default seed data.</p>",
+    },
+    {
+      title: "Charity Run Event",
+      description: "Organize a city charity run to support local education.",
+      deadline: daysFromNow(-5),
+      date: new Date().getTime(),
+      image: "https://picsum.photos/1920/1080?random=7",
+      goals: "1.2",
+      content: "<p>Organize a city charity run to support local education. This project is part of the default seed data.</p>",
+    },
+    {
+      title: "Podcast Studio Setup",
+      description: "Build a small recording studio for a community podcast.",
+      deadline: daysFromNow(-30),
+      date: new Date().getTime(),
+      image: "https://picsum.photos/1920/1080?random=8",
+      goals: "0.4",
+      content: "<p>Build a small recording studio for a community podcast. This project is part of the default seed data.</p>",
+    },
+    {
+      title: "Tech Conference",
+      description: "Run a one-day conference with talks on web3 and AI.",
+      deadline: daysFromNow(-90),
+      date: new Date().getTime(),
+      image: "https://picsum.photos/1920/1080?random=9",
+      goals: "2.5",
+      content: "<p>Run a one-day conference with talks on web3 and AI. This project is part of the default seed data.</p>",
     },
   ];
   for (const project of project_list) {

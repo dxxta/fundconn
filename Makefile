@@ -1,7 +1,7 @@
 IPFS_CONTAINER ?= ipfs_host
 IPFS_CORS := {"Access-Control-Allow-Headers": ["X-Requested-With","Range"],"Access-Control-Allow-Methods": ["POST","GET"],"Access-Control-Allow-Origin": ["*"]}
 
-.PHONY: help build up down logs ipfs-config simulator deploy-dev
+.PHONY: help build up down logs ipfs-config install simulator deploy-dev
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*##/\t/'
@@ -22,8 +22,13 @@ ipfs-config: ## Set Kubo API CORS headers and restart (was start.sh)
 	docker restart $(IPFS_CONTAINER)
 	docker exec $(IPFS_CONTAINER) ipfs config show
 
-simulator: ## Run the Hardhat node locally
+backend/node_modules: backend/package.json
+	cd backend && npm install
+
+install: backend/node_modules ## Install backend dependencies
+
+simulator: backend/node_modules ## Run the Hardhat node locally
 	cd backend && npm run simulator
 
-deploy-dev: ## Compile and deploy the contract to localhost
+deploy-dev: backend/node_modules ## Compile and deploy the contract to localhost
 	cd backend && npm run deploy:dev

@@ -13,10 +13,14 @@ const config: HardhatUserConfig = {
     //   // url set default to simulator, localhost:8545
     //   chainId: 31337,
     // },
-    sepolia: {
-      url: process.env.PROVIDER,
-      accounts: [`0x${process.env.PRIVATE_KEY}`],
-    },
+    ...(process.env.PROVIDER && process.env.PRIVATE_KEY
+      ? {
+          sepolia: {
+            url: process.env.PROVIDER,
+            accounts: [`0x${process.env.PRIVATE_KEY}`],
+          },
+        }
+      : {}),
   },
 };
 
