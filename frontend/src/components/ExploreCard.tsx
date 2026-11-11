@@ -1,10 +1,11 @@
+import { memo } from "react";
 import { Image, Flex, Group, Text, Button, Card, Stack } from "@mantine/core";
 import { IconArrowRight, IconTargetArrow } from "@tabler/icons-react";
 import { projectType } from "../context/Contract";
 import { useHover } from "@mantine/hooks";
 import { getProjectSlug } from "../utils/converter";
 
-export const ExploreCard = ({
+const ExploreCardComponent = ({
   project,
   width,
 }: {
@@ -16,7 +17,7 @@ export const ExploreCard = ({
     <Card
       ref={ref}
       w={width ? width : "100%"}
-      h="625px"
+      h="auto"
       shadow="sm"
       padding="xl"
       component="a"
@@ -31,6 +32,7 @@ export const ExploreCard = ({
     >
       <Card.Section>
         <Image
+          loading="lazy"
           src={project?.image}
           h={350}
           alt={project?.title}
@@ -38,21 +40,21 @@ export const ExploreCard = ({
         />
       </Card.Section>
 
-      {/* <Flex direction="column" justify="space-between"> */}
-      <Stack justify="space-between" h="100%">
-        <Flex direction="column" mt="md">
-          <Text size="sm">
-            {new Intl.DateTimeFormat("en-EN", {
-              dateStyle: "medium",
-            }).format(project.deadline)}
-          </Text>
-          <Text fw={500} size="lg">
-            {project?.title}
-          </Text>
-        </Flex>
+      <Stack justify="space-between" h="100%" gap="sm">
+        <Stack gap="sm" mt="md">
+          <Flex direction="column">
+            <Text size="sm">
+              {new Intl.DateTimeFormat("en-EN", {
+                dateStyle: "medium",
+              }).format(project.deadline)}
+            </Text>
+            {/* fixed two-line title area keeps every card aligned */}
+            <Text fw={500} size="lg" lineClamp={2} h="3.4em">
+              {project?.title}
+            </Text>
+          </Flex>
 
-        <Stack justify="space-between" h="100%" style={{ marginTop: "auto" }}>
-          <Group gap="sm">
+          <Group gap="sm" wrap="nowrap">
             <IconTargetArrow />
 
             <Text size="sm">
@@ -60,16 +62,18 @@ export const ExploreCard = ({
             </Text>
           </Group>
 
-          <Text c="dimmed" size="sm">
-            {project?.description?.slice(0, 100)}
-            {project?.description?.length > 100 && "..."}
+          {/* fixed four-line description area */}
+          <Text c="dimmed" size="sm" lineClamp={4} h="6.4em">
+            {project?.description}
           </Text>
-
-          <Group>
-            <Button rightSection={<IconArrowRight />}>Detail</Button>
-          </Group>
         </Stack>
+
+        <Group>
+          <Button rightSection={<IconArrowRight />}>Detail</Button>
+        </Group>
       </Stack>
     </Card>
   );
 };
+
+export const ExploreCard = memo(ExploreCardComponent);

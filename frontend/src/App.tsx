@@ -29,17 +29,30 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { Navigate, Route, Routes, useNavigate } from "react-router";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { useContractContext } from "./context/Contract";
 import { nprogress } from "@mantine/nprogress";
-import { Home } from "./pages/Home";
-import { Detail } from "./pages/Detail";
-import { NotFound } from "./pages/NotFound";
+import { DemoBanner, isDemo } from "./components/DemoBanner";
+const Home = lazy(() =>
+  import("./pages/Home").then((module) => ({ default: module.Home }))
+);
+const Detail = lazy(() =>
+  import("./pages/Detail").then((module) => ({ default: module.Detail }))
+);
+const Projects = lazy(() =>
+  import("./pages/Projects").then((module) => ({ default: module.Projects }))
+);
+const CreateProject = lazy(() =>
+  import("./pages/CreateProject").then((module) => ({
+    default: module.CreateProject,
+  }))
+);
+const NotFound = lazy(() =>
+  import("./pages/NotFound").then((module) => ({ default: module.NotFound }))
+);
 import { useDisclosure } from "@mantine/hooks";
-import { CreateProject } from "./pages/CreateProject";
-import { ReactNode, useEffect } from "react";
 import { JsonRpcSigner } from "ethers";
 import logo from "./assets/logo.png";
-import { Projects } from "./pages/Projects";
 
 const GuardAuthentication = ({
   loading,
@@ -83,7 +96,7 @@ const App = () => {
   }, [loading]);
 
   useEffect(() => {
-    contract?.on("NewFunder", (args) => {
+    const newFunderHandler = (args: string) => {
       if (args != account?.address) {
         notifications.show({
           title: "Funds status",
@@ -94,8 +107,12 @@ const App = () => {
         });
       }
       console.log("new funder", args);
-    });
-  }, [contract]);
+    };
+    contract?.on("NewFunder", newFunderHandler);
+    return () => {
+      contract?.off("NewFunder", newFunderHandler);
+    };
+  }, [contract, account?.address]);
   return (
     <>
       <Drawer opened={openedMenu} onClose={close} title="Navigation">
@@ -134,13 +151,17 @@ const App = () => {
           ))}
       </Drawer>
 
+      {isDemo && <DemoBanner />}
       <AppShell
+        style={isDemo ? { paddingTop: "var(--demo-banner-height, 0px)" } : undefined}
         header={{
           height: "50",
         }}
         padding="md"
       >
-        <AppShell.Header>
+        <AppShell.Header
+          style={isDemo ? { top: "var(--demo-banner-height, 0px)" } : undefined}
+        >
           <Container fluid h={"100%"} size="xl">
             <Group h={"100%"} justify="space-between" align="center">
               <Anchor onClick={() => navigate("/")}>
@@ -206,44 +227,39 @@ const App = () => {
         </AppShell.Header>
         <AppShell.Main px={0} mx={0}>
           <Container fluid mih="80vh" px={0}>
-            <Routes>
-              <Route index path="/" element={<Home />} />
-              <Route path="/projects/:id" element={<Detail />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route
-                path="/projects/create"
-                element={
-                  <GuardAuthentication
-                    account={account ?? null}
-                    loading={loading}
-                  >
-                    <CreateProject />
-                  </GuardAuthentication>
-                  // account?.address ? (
-                  //   <CreateProject />
-                  // ) : (
-                  //   <Navigate to="/" replace />
-                  // )
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense
+              fallback={
+                <Stack h="80vh" justify="center" align="center">
+                  <Loader color="primary" size="xl" type="dots" />
+                </Stack>
+              }
+            >
+              <Routes>
+                <Route index path="/" element={<Home />} />
+                <Route path="/projects/:id" element={<Detail />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route
+                  path="/projects/create"
+                  element={
+                    <GuardAuthentication
+                      account={account ?? null}
+                      loading={loading}
+                    >
+                      <CreateProject />
+                    </GuardAuthentication>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </Container>
           <Divider my="lg" />
           <Container ta="center">
             <Text my="xl" span>
-              Created by
-              <Anchor
-                href="https://id.linkedin.com/in/dinta-syaifuddin"
-                target="_blank"
-              >
-                <Highlight
-                  color="primary"
-                  highlight="Mochammad Dinta Alif Syaifuddin"
-                >
-                  Mochammad Dinta Alif Syaifuddin
-                </Highlight>
-              </Anchor>
+              Created and managed by
+              <Highlight color="primary" highlight="akarun dev">
+                akarun dev
+              </Highlight>
             </Text>
           </Container>
         </AppShell.Main>

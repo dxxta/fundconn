@@ -4,6 +4,8 @@ import {
   useContext,
   ReactNode,
   useEffect,
+  useCallback,
+  useMemo,
 } from "react";
 import type {
   AbstractProvider,
@@ -29,6 +31,7 @@ export type projectType = {
   amount: string;
   status: string;
   remainingDays: number;
+  isExpired?: boolean;
   is_over_goals: boolean;
   is_zero_allowed: boolean;
 };
@@ -95,16 +98,16 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const setLoading = (value: boolean) => {
+  const setLoading = useCallback((value: boolean) => {
     setTimeout(
       () => {
         setNativeLoading(value);
       },
       value ? 0 : 1000
     );
-  };
+  }, []);
 
-  const updateProvider = async (
+  const updateProvider = useCallback(async (
     provider: AbstractProvider,
     signer?: JsonRpcSigner
   ) => {
@@ -121,68 +124,9 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
 
     setProvider(provider);
     setContract(contract);
-  };
+  }, [setLocalAccount]);
 
-  // Connect to metamask
-  const connectMetamask = async () => {
-    try {
-      setLoading(true);
-      if (!window.ethereum) {
-        notifications.show({
-          title: "Account request",
-          color: "orange",
-          message: "You have to install metamask",
-        });
-        return;
-      }
-
-      if (account?.address) {
-        notifications.show({
-          title: "Account status",
-          message: `Successfully disconnected as ${account.address}`,
-        });
-        loadBlockchain(true);
-        return;
-      }
-
-      const provider = new BrowserProvider(window.ethereum);
-      await provider
-        ?.send("eth_requestAccounts", [])
-        .then(async () => {
-          const accounts = await provider.listAccounts();
-          await updateProvider(provider, accounts[0]);
-          notifications.show({
-            title: "Account status",
-            message: `Successfully connected as ${accounts[0].address}`,
-          });
-        })
-        .catch((error) => {
-          if (error.code === 4001) {
-            notifications.show({
-              title: "Account status",
-              color: "orange",
-              message: "You refused to connect your account to our website",
-            });
-          } else {
-            notifications.show({
-              title: "Account request",
-              message:
-                "Please open/unlock your Metamask and reload the page to continue",
-            });
-          }
-        })
-        .finally(() => {
-          window.ethereum.on("accountsChanged", async () => {
-            const accounts = await provider.listAccounts();
-            await updateProvider(provider, accounts[0]);
-          });
-        });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const mappingProject = (project: projectType) => {
+  const mappingProject = useCallback((project: projectType) => {
     const oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
     const firstDate = new Date();
     const secondDate = new Date(toNumber(project.deadline));
@@ -205,13 +149,17 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
           : parseFloat(goals) == parseFloat(amount)
           ? "Reached"
           : "Ongoing",
-      remainingDays: Math.round(Math.abs((+firstDate - +secondDate) / oneDay)),
+      remainingDays: Math.max(
+        0,
+        Math.ceil((+secondDate - +firstDate) / oneDay)
+      ),
+      isExpired: +secondDate < +firstDate,
       is_over_goals: project.is_over_goals,
       is_zero_allowed: project.is_zero_allowed,
     };
-  };
+  }, []);
 
-  const fetchFunders = async (id: string): Promise<fundType[] | null> => {
+  const fetchFunders = useCallback(async (id: string): Promise<fundType[] | null> => {
     setLoading(true);
     try {
       if (!contract) return null;
@@ -230,9 +178,9 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract, setLoading]);
 
-  const fetchProjects = async (): Promise<projectType[] | null> => {
+  const fetchProjects = useCallback(async (): Promise<projectType[] | null> => {
     setLoading(true);
     try {
       if (!contract) return null;
@@ -249,9 +197,9 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract, mappingProject, setLoading]);
 
-  const fetchProject = async (id: string): Promise<projectType | null> => {
+  const fetchProject = useCallback(async (id: string): Promise<projectType | null> => {
     setLoading(true);
     try {
       if (!id) throw new Error("ID not provided");
@@ -265,9 +213,9 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract, mappingProject, setLoading]);
 
-  const donateProject = async (
+  const donateProject = useCallback(async (
     id: string,
     amount: string,
     message: string
@@ -290,9 +238,9 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract, setLoading]);
 
-  const createProject = async (payload: projectCreationType): Promise<void> => {
+  const createProject = useCallback(async (payload: projectCreationType): Promise<void> => {
     setLoading(true);
     try {
       await contract?.createProject(
@@ -322,9 +270,9 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract, setLoading]);
 
-  const loadBlockchain = async (resetAccount: boolean = false) => {
+  const loadBlockchain = useCallback(async (resetAccount: boolean = false) => {
     setLoading(true);
     try {
       if (resetAccount) {
@@ -339,42 +287,127 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
         ? new BrowserProvider(window?.ethereum)
         : new JsonRpcProvider(import.meta.env.VITE_NETWORK);
 
-      if (!((await provider.listAccounts())?.length > 0)) {
-        provider = new JsonRpcProvider(import.meta.env.VITE_NETWORK);
+      const rpcProvider = new JsonRpcProvider(import.meta.env.VITE_NETWORK);
+      let useRpc = !((await provider.listAccounts())?.length > 0);
+      if (!useRpc) {
+        // Fall back to the configured RPC when the wallet is on another chain
+        try {
+          const [walletChain, rpcChain] = await Promise.all([
+            provider.getNetwork(),
+            rpcProvider.getNetwork(),
+          ]);
+          useRpc = walletChain.chainId !== rpcChain.chainId;
+        } catch {
+          useRpc = true;
+        }
       }
+      if (useRpc) provider = rpcProvider;
 
       await updateProvider(provider);
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading, setLocalAccount, updateProvider]);
 
+  // Connect to a browser wallet
+  const connectMetamask = useCallback(async () => {
+    try {
+      setLoading(true);
+      if (!window.ethereum) {
+        notifications.show({
+          title: "Account request",
+          color: "orange",
+          message: "You have to install a browser wallet (MetaMask, Coinbase Wallet, etc.)",
+        });
+        return;
+      }
+
+      if (account?.address) {
+        notifications.show({
+          title: "Account status",
+          message: `Successfully disconnected as ${account.address}`,
+        });
+        await loadBlockchain(true);
+        return;
+      }
+
+      const walletProvider = new BrowserProvider(window.ethereum);
+      await walletProvider.send("eth_requestAccounts", []);
+      const accounts = await walletProvider.listAccounts();
+      if (accounts[0]) {
+        await updateProvider(walletProvider, accounts[0]);
+        notifications.show({
+          title: "Account status",
+          message: `Successfully connected as ${accounts[0].address}`,
+        });
+      }
+      window.ethereum.on("accountsChanged", async () => {
+        const changedAccounts = await walletProvider.listAccounts();
+        await updateProvider(walletProvider, changedAccounts[0]);
+      });
+    } catch (error: any) {
+      if (error.code === 4001) {
+        notifications.show({
+          title: "Account status",
+          color: "orange",
+          message: "You refused to connect your account to our website",
+        });
+      } else {
+        notifications.show({
+          title: "Account request",
+          color: "orange",
+          message: "Please open/unlock your wallet and reload the page to continue",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [account?.address, loadBlockchain, setLoading, updateProvider]);
+
+  // Run once on mount (loadBlockchain's identity can change between renders)
   useEffect(() => {
     loadBlockchain();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (localAccount && !account) {
-      connectMetamask();
+      void connectMetamask();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localAccount]);
 
+  const contextValue = useMemo(
+    () => ({
+      loading,
+      contract,
+      provider,
+      account,
+      fetchProject,
+      fetchProjects,
+      fetchFunders,
+      donateProject,
+      createProject,
+      connectMetamask,
+      setLoading,
+    }),
+    [
+      loading,
+      contract,
+      provider,
+      account,
+      fetchProject,
+      fetchProjects,
+      fetchFunders,
+      donateProject,
+      createProject,
+      connectMetamask,
+      setLoading,
+    ]
+  );
+
   return (
-    <ContractContext.Provider
-      value={{
-        loading,
-        contract,
-        provider,
-        account,
-        fetchProject,
-        fetchProjects,
-        fetchFunders,
-        donateProject,
-        createProject,
-        connectMetamask,
-        setLoading,
-      }}
-    >
+    <ContractContext.Provider value={contextValue}>
       {children}
     </ContractContext.Provider>
   );

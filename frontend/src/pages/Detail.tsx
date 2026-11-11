@@ -64,6 +64,7 @@ const DetailContent = ({ content }: { content: string }) => {
           renderToStaticMarkup(
             <MantineProvider>
               <Image
+                loading="lazy"
                 src={imageSrc}
                 fallbackSrc="https://placehold.co/600x400?text=..."
               />
@@ -159,10 +160,13 @@ export const Detail = () => {
   });
 
   useEffect(() => {
-    if (contract) {
-      loadProject();
-      contract?.on("NewFunder", loadProject);
-    }
+    if (!contract) return;
+    const newFunderHandler = () => loadProject();
+    loadProject();
+    contract.on("NewFunder", newFunderHandler);
+    return () => {
+      contract.off("NewFunder", newFunderHandler);
+    };
   }, [contract]);
 
   useEffect(() => {
@@ -297,6 +301,7 @@ export const Detail = () => {
         <Paper bg="primary">
           <Container>
             <Image
+              loading="lazy"
               src={project?.image}
               h="500px"
               fit={useMatches({
@@ -354,7 +359,9 @@ export const Detail = () => {
                   }).format(project?.deadline)}
                 </Text>
                 <Divider mx="md" orientation="vertical" />
-                <Text>{project?.remainingDays} Days</Text>
+                <Text c={project?.isExpired ? "red" : undefined}>
+                  {project?.isExpired ? "Expired" : `${project?.remainingDays} Days`}
+                </Text>
               </Flex>
             </Grid.Col>
             <Grid.Col
@@ -368,6 +375,7 @@ export const Detail = () => {
                 ref={ref}
                 disabled={
                   !account ||
+                  Boolean(project?.isExpired) ||
                   Boolean(
                     !project?.is_over_goals &&
                       +(project?.amount ?? 0) >= +(project?.goals ?? 0)

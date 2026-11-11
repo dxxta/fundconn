@@ -11,6 +11,7 @@ import {
   useMatches,
   Grid,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { projectType, useContractContext } from "../context/Contract";
 import { useDocumentTitle } from "@mantine/hooks";
@@ -28,26 +29,31 @@ export const Projects = () => {
   };
 
   const updatedProjects = async () => {
-    const response = await fetchProjects();
-    if (response) {
-      console.log(response);
-      setProjects(response);
+    try {
+      const response = await fetchProjects();
+      setProjects(response ?? []);
+    } catch (error) {
+      console.error(error);
+      setProjects([]);
+      notifications.show({
+        title: "Projects",
+        color: "red",
+        message:
+          "Could not load projects. Check that your wallet is on the same network as the contract and VITE_CONTRACT_ADDRESS is correct.",
+      });
     }
   };
 
-  const updatedContact = async () => {
-    if (!contract) return;
-    updatedProjects();
-
-    const ProjectCreatedListener = "ProjectCreated";
-    if ((await contract.listenerCount(ProjectCreatedListener)) > 0) {
-      contract?.off(ProjectCreatedListener, updatedProjects);
-    } else {
-      contract?.on(ProjectCreatedListener, updatedProjects);
-    }
-  };
   useEffect(() => {
-    updatedContact();
+    if (!contract) return;
+    const projectCreatedHandler = () => {
+      void updatedProjects();
+    };
+    void updatedProjects();
+    contract.on("ProjectCreated", projectCreatedHandler);
+    return () => {
+      contract.off("ProjectCreated", projectCreatedHandler);
+    };
   }, [contract]);
 
   return (

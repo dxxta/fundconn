@@ -20,6 +20,7 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { projectType, useContractContext } from "../context/Contract";
 import { useDocumentTitle, useHover } from "@mantine/hooks";
@@ -43,21 +44,18 @@ export const Home = () => {
   useDocumentTitle("Homepage - Fundconn");
 
   const updatedProjects = async () => {
-    const response = await fetchProjects();
-    if (response) {
-      setProjects(response);
-    }
-  };
-
-  const updatedContact = async () => {
-    if (!contract) return;
-    updatedProjects();
-
-    const ProjectCreatedListener = "ProjectCreated";
-    if ((await contract.listenerCount(ProjectCreatedListener)) > 0) {
-      contract?.off(ProjectCreatedListener, updatedProjects);
-    } else {
-      contract?.on(ProjectCreatedListener, updatedProjects);
+    try {
+      const response = await fetchProjects();
+      setProjects(response ?? []);
+    } catch (error) {
+      console.error(error);
+      setProjects([]);
+      notifications.show({
+        title: "Projects",
+        color: "red",
+        message:
+          "Could not load projects. Check that your wallet is on the same network as the contract and VITE_CONTRACT_ADDRESS is correct.",
+      });
     }
   };
 
@@ -73,7 +71,15 @@ export const Home = () => {
   };
 
   useEffect(() => {
-    updatedContact();
+    if (!contract) return;
+    const projectCreatedHandler = () => {
+      void updatedProjects();
+    };
+    void updatedProjects();
+    contract.on("ProjectCreated", projectCreatedHandler);
+    return () => {
+      contract.off("ProjectCreated", projectCreatedHandler);
+    };
   }, [contract]);
 
   return (
@@ -277,7 +283,7 @@ export const Home = () => {
               span={6}
             >
               <Flex justify="center" align="center" direction="column">
-                <Image h="150px" src={teamImage} />
+                <Image loading="lazy" h="150px" src={teamImage} />
               </Flex>
             </Grid.Col>
           </Grid>
