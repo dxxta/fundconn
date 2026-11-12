@@ -8,6 +8,15 @@ A demo runs the whole stack on a throwaway Hardhat chain with sample projects al
 ![Projects](demos/website-2.png)
 ![Project detail](demos/website-3.png)
 
+## End-to-end walkthrough
+
+Flows 1–4 were captured in the cmux browser on the local Hardhat chain. No wallet shim was used. The real-wallet flows (5–7) remain pending because this session could not access Chrome without opening or inspecting its existing tabs.
+
+![Home page with the DEMO banner, public test key, and Copy key button](demos/e2e-01-home-demo-banner.png)
+![All 10 seeded projects in aligned cards, including expired entries](demos/e2e-02-projects-list.png)
+![Active Build Responsive Web App detail with 14 days remaining](demos/e2e-03-project-detail-active.png)
+![Expired Tech Conference detail with Donate disabled](demos/e2e-04-project-detail-expired.png)
+
 ## What a demo contains
 
 - **Backend:** the `backend` container starts `hardhat node` on `0.0.0.0:8545`, then `backend/docker-entrypoint.sh` runs `npm run deploy:dev`. That deploys `EventFunding` and seeds 10 sample projects: 7 active and 3 already expired, with deadlines relative to the start time (`backend/scripts/deploy.ts`).
